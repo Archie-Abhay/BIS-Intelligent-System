@@ -38,8 +38,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve the actual PDFs from the data folder directly!
-app.mount("/pdfs", StaticFiles(directory="data/pdfs"), name="pdfs")
+# Serve the actual PDFs from the data folder directly using absolute path
+_pdf_dir = os.path.join(os.path.dirname(_cur_dir), "data", "pdfs")
+os.makedirs(_pdf_dir, exist_ok=True)
+app.mount("/pdfs", StaticFiles(directory=_pdf_dir), name="pdfs")
 
 app.include_router(voice_router)
 
@@ -103,11 +105,15 @@ async def chat_endpoint(request: ChatRequest):
         logger.error(f"Error during graph execution: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/")
+async def root():
+    return {"message": "BIS Intelligent Assistant API is running successfully!", "status": "ok"}
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
-    # Make sure to run from project root: python -m backend.main
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=False)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=False)
