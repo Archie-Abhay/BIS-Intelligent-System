@@ -33,21 +33,49 @@ Verifying compliance against official **Indian Standards (IS)** and the **BIS Ac
 ## 🏗️ Architecture
 
 ```mermaid
-flowchart LR
-    User([User Query]) --> Frontend[Next.js 14 UI]
-    Frontend -->|POST /api/chat| API[FastAPI Gateway]
-    
-    subgraph Agentic_Graph["LangGraph Workflow"]
-        API --> Router[Router Node<br/>Intent & Standard Extraction]
-        Router --> Retriever[Retriever Node<br/>FastEmbed + Qdrant Dense Search]
-        Retriever --> Generator[Generator Node<br/>Groq LLM Reasoning]
-        Generator --> Guardrail{Guardrail Validator<br/>Zero-Hallucination Check}
-        Guardrail -- Failed Check --> Generator
-        Guardrail -- Passed --> EndState([Verified Response])
+flowchart TD
+    %% Custom Styling
+    classDef client fill:#0d2a58,stroke:#f97316,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef api fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef agent fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#ffffff;
+    classDef database fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef ai fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef decision fill:#7c2d12,stroke:#fb923c,stroke-width:2px,color:#ffffff,font-weight:bold;
+
+    subgraph ClientLayer["🖥️ Client Layer (Next.js 14)"]
+        User(["👤 User Query"]):::client
+        UI["💬 Chat Interface"]:::client
+        PDFView["📑 Interactive PDF Viewer<br/>(Exact Page & Snippet Highlight)"]:::client
     end
-    
-    EndState -->|Answer + Citations| Frontend
-    Frontend -->|Click Citation| Viewer[Interactive PDF Viewer Pane<br/>Page & Text Anchor]
+
+    subgraph APILayer["⚡ Gateway (FastAPI)"]
+        Gateway["🚀 FastAPI Backend Server<br/>(/api/chat)"]:::api
+    end
+
+    subgraph Agentic_Graph["🧠 LangGraph Multi-Agent RAG Engine"]
+        Router["🎯 Router Node<br/>(Extracts Intent & Standard Number)"]:::agent
+        Retriever["🔍 Retriever Node<br/>(FastEmbed Cosine Search)"]:::agent
+        Qdrant[("🗄️ Qdrant Vector Database<br/>(Indexed BIS Chunks)")]:::database
+        Generator["⚡ Generator Node<br/>(Groq LPU LLM Reasoning)"]:::ai
+        Guardrail{"🛡️ Guardrail Validator<br/>(Zero-Hallucination Audit)"}:::decision
+    end
+
+    %% User Flow
+    User -->|Asks Question| UI
+    UI -->|POST /api/chat| Gateway
+    Gateway --> Router
+    Router --> Retriever
+    Retriever <-->|Dense Semantic Search| Qdrant
+    Retriever -->|Verified Context Chunks| Generator
+    Generator -->|Drafted Answer + Citations| Guardrail
+
+    %% Retry Cycle
+    Guardrail -- "❌ Unverified Chunk ID<br/>(Self-Correction Loop)" --> Generator
+
+    %% Success Output
+    Guardrail -- "✅ 100% Verified Citations" --> Gateway
+    Gateway -->|Verified Response Payload| UI
+    UI -->|Clicks Citation Button| PDFView
 ```
 
 ---
